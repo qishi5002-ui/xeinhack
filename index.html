@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>XeinHack - Digital Store</title>
+<style>
+* { box-sizing: border-box; margin:0; padding:0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background:#0d1b3d; min-height:100vh; color:#fff; }
+.header { background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); padding:1rem 0; box-shadow:0 2px 20px rgba(0,0,0,0.2); position:sticky; top:0; z-index:100; }
+.nav { max-width:1200px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; padding:0 2rem; }
+.logo { font-size:1.6rem; font-weight:700; background:linear-gradient(45deg,#00d4aa,#667eea); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.cart-btn { background:#667eea; color:#fff; border:none; padding:.6rem 1rem; border-radius:20px; cursor:pointer; font-weight:600; display:flex; gap:.5rem; align-items:center;}
+.cart-count { background:#ff4757; color:white; border-radius:50%; padding:.15rem .45rem; font-size:.8rem; }
+.container { max-width:1200px; margin:1.5rem auto; padding:1rem; }
+.hero { text-align:center; color:white; margin-bottom:1.5rem; }
+.hero h1 { font-size:2.4rem; text-shadow:2px 2px 4px rgba(0,0,0,0.25); margin-bottom:.5rem; }
+.note-box { background:#ffeb3b; color:#222; padding:1rem; border-radius:10px; font-weight:700; margin-bottom:1rem; display:inline-block; }
+.products-grid { display:grid; grid-template-columns: repeat(auto-fill,minmax(280px,1fr)); gap:1.25rem; }
+.product-card { background: rgba(255,255,255,0.05); border-radius:12px; overflow:hidden; box-shadow:0 8px 25px rgba(0,0,0,0.3); transition:transform .18s; }
+.product-card:hover { transform: translateY(-6px); }
+.product-image { height:150px; display:flex; align-items:center; justify-content:center; font-size:3rem; color:white; background: linear-gradient(45deg,#667eea,#00d4aa); }
+.product-info { padding:1rem; }
+.product-title { font-weight:700; color:#fff; margin-bottom:.35rem; }
+.product-platform { color:#00d4aa; margin-bottom:.6rem; }
+.duration-selector select { width:100%; padding:.45rem; border-radius:6px; border:1px solid #e6eef8; margin-bottom:.5rem; }
+.duration-price { color:#00d4aa; font-weight:700; margin-bottom:.6rem; }
+.add-to-cart { width:100%; padding:.6rem; border-radius:8px; background:#00d4aa; color:white; border:none; cursor:pointer; font-weight:700; }
+.cart-page, .checkout-page, .receipt-page { display:none; max-width:900px; margin:2rem auto; padding:1rem; background: rgba(255,255,255,0.05); border-radius:12px; box-shadow:0 8px 25px rgba(0,0,0,0.3);}
+.cart-item { display:flex; justify-content:space-between; gap:10px; padding:.75rem 0; border-bottom:1px solid rgba(255,255,255,0.2); align-items:center; }
+.cart-item div button { cursor:pointer; }
+.checkout-wallet { margin-top:1rem; background: rgba(255,255,255,0.1); padding:1rem; border-radius:10px; text-align:center; }
+.copy-btn { margin-top:.5rem; padding:.5rem .8rem; background:#667eea; color:white; border:none; border-radius:8px; cursor:pointer; }
+.telegram-link { color:#00d4aa; text-decoration:none; font-weight:700; }
+.notification { position: fixed; bottom: 20px; left: 20px; background: #00d4aa; color: white; padding: 1rem; border-radius: 8px; z-index:10000; opacity:0.9; }
+</style>
+</head>
+<body>
+
+<header class="header">
+<nav class="nav">
+<div class="logo">🎮 XeinHack</div>
+<button class="cart-btn" onclick="openCart()">Cart <span class="cart-count" id="cart-count">0</span></button>
+</nav>
+</header>
+
+<main class="container">
+<div class="hero">
+<h1>XeinHack Keys</h1>
+<div class="note-box">NOTE: Please be reminded to screenshot your crypto payment</div>
+</div>
+
+<div class="products-grid" id="products-grid"></div>
+</main>
+<script>
+// Products setup
+const products = [
+  { id:1, title:'Game Key A', platform:'PC', durations:[{name:'1 Month', price:10},{name:'3 Months', price:25}] },
+  { id:2, title:'Game Key B', platform:'PC', durations:[{name:'1 Month', price:15},{name:'3 Months', price:35}] },
+  { id:3, title:'Game Key C', platform:'PC', durations:[{name:'1 Month', price:20},{name:'3 Months', price:50}] }
+];
+
+const productsGrid = document.getElementById('products-grid');
+const cartCountEl = document.getElementById('cart-count');
+let cart = [];
+
+// Render products
+products.forEach(product => {
+  const card = document.createElement('div');
+  card.className='product-card';
+  card.innerHTML=`
+    <div class="product-image">🎮</div>
+    <div class="product-info">
+      <div class="product-title">${product.title}</div>
+      <div class="product-platform">${product.platform}</div>
+      <div class="duration-selector">
+        <select id="duration-${product.id}">
+          ${product.durations.map(d => `<option value="${d.price}">${d.name} - $${d.price}</option>`).join('')}
+        </select>
+      </div>
+      <div class="duration-price">$${product.durations[0].price}</div>
+      <button class="add-to-cart" onclick="addToCart(${product.id})">Add to Cart</button>
+    </div>
+  `;
+  productsGrid.appendChild(card);
+});
+
+// Update duration price on select change
+products.forEach(product=>{
+  const select = document.getElementById(`duration-${product.id}`);
+  select.addEventListener('change', e=>{
+    select.parentElement.nextElementSibling.textContent=`$${e.target.value}`;
+  });
+});
+
+function addToCart(id){
+  const product = products.find(p=>p.id===id);
+  const select = document.getElementById(`duration-${id}`);
+  const price = parseFloat(select.value);
+  const duration = select.options[select.selectedIndex].text;
+  const existing = cart.find(c=>c.id===id && c.duration===duration);
+  if(existing) existing.quantity++;
+  else cart.push({...product, duration, price, quantity:1});
+  cartCountEl.textContent=cart.reduce((acc,c)=>acc+c.quantity,0);
+  showNotification();
+}
+
+function showNotification(){
+  const usernames = ['alpha_fox','bravo123','charlieX','delta99','echo_007','foxtrot22'];
+  const rand = usernames[Math.floor(Math.random()*usernames.length)];
+  const censored = rand.replace(/.(?=.{3})/g,'*');
+  const notification = document.createElement('div');
+  notification.className='notification';
+  notification.textContent=`${censored} just bought a key`;
+  document.body.appendChild(notification);
+  setTimeout(()=>{ notification.remove(); }, 6000);
+}
+
+// Pages
+const cartPage = document.createElement('div');
+cartPage.className='cart-page';
+document.body.appendChild(cartPage);
+
+const checkoutPage = document.createElement('div');
+checkoutPage.className='checkout-page';
+document.body.appendChild(checkoutPage);
+
+const receiptPage = document.createElement('div');
+receiptPage.className='receipt-page';
+document.body.appendChild(receiptPage);
+
+function openCart(){
+  renderCart();
+  cartPage.style.display='block';
+  productsGrid.parentElement.style.display='none';
+  checkoutPage.style.display='none';
+  receiptPage.style.display='none';
+}
+
+function renderCart(){
+  cartPage.innerHTML='<h2>Shopping Cart</h2>';
+  cart.forEach((item,index)=>{
+    const div = document.createElement('div');
+    div.className='cart-item';
+    div.innerHTML=`
+      <div>${item.title} (${item.duration})</div>
+      <div>
+        <button onclick="decrement(${index})">-</button>
+        ${item.quantity}
+        <button onclick="increment(${index})">+</button>
+      </div>
+      <div>$${item.price*item.quantity}</div>
+    `;
+    cartPage.appendChild(div);
+  });
+  const total = cart.reduce((acc,c)=>acc+c.price*c.quantity,0);
+  const checkoutBtn = document.createElement('button');
+  checkoutBtn.textContent='Proceed to Checkout';
+  checkoutBtn.style.marginTop='1rem';
+  checkoutBtn.onclick=()=>openCheckout();
+  cartPage.appendChild(document.createElement('hr'));
+  cartPage.appendChild(document.createTextNode(`Total: $${total}`));
+  cartPage.appendChild(checkoutBtn);
+}
+
+function increment(i){ cart[i].quantity++; renderCart(); updateCartCount(); }
+function decrement(i){ if(cart[i].quantity>1) cart[i].quantity--; else cart.splice(i,1); renderCart(); updateCartCount(); }
+function updateCartCount(){ cartCountEl.textContent=cart.reduce((acc,c)=>acc+c.quantity,0); }
+
+function openCheckout(){
+  cartPage.style.display='none';
+  checkoutPage.style.display='block';
+  receiptPage.style.display='none';
+  renderCheckout();
+}
+
+function renderCheckout(){
+  const walletAddress='TYourWalletAddressHere';
+  const network='TRC-20';
+  checkoutPage.innerHTML='<h2>Checkout</h2>';
+  checkoutPage.innerHTML+=`<h3>Crypto Wallet Payment (Send On-Chain)</h3>`;
+  checkoutPage.innerHTML+=`<p>Network: ${network}</p>`;
+  checkoutPage.innerHTML+=`<div class="checkout-wallet">${walletAddress}<br>
+  <button class="copy-btn" onclick="copyWallet()">Copy Wallet Address</button></div>`;
+  checkoutPage.innerHTML+='<div style="margin-top:1rem;">Your Cart:</div>';
+  cart.forEach(item=>{
+    checkoutPage.innerHTML+=`<div>${item.title} (${item.duration}) x ${item.quantity} - $${item.price*item.quantity}</div>`;
+  });
+  const usernameInput = document.createElement('input');
+  usernameInput.placeholder='Enter your Telegram username';
+  usernameInput.id='tg-user';
+  usernameInput.style.marginTop='1rem';
+  checkoutPage.appendChild(usernameInput);
+  const paidBtn = document.createElement('button');
+  paidBtn.textContent="I've Paid";
+  paidBtn.style.marginTop='1rem';
+  paidBtn.onclick=()=>openReceipt();
+  checkoutPage.appendChild(paidBtn);
+}
+
+function copyWallet(){
+  const el=document.createElement('textarea');
+  el.value='TYourWalletAddressHere';
+  document.body.appendChild(el);
+  el.select();
+  document.execCommand('copy');
+  document.body.removeChild(el);
+  alert('Wallet address copied!');
+}
+
+function openReceipt(){
+  checkoutPage.style.display='none';
+  receiptPage.style.display='block';
+  receiptPage.innerHTML='<h2>Receipt</h2>';
+  const orderId = 'ORD'+Math.floor(Math.random()*1000000);
+  receiptPage.innerHTML+=`<div>Order ID: ${orderId}</div>`;
+  receiptPage.innerHTML+='<div>Payment Status: Awaiting Verification</div>';
+  const tgUser = document.getElementById('tg-user').value || 'Not Provided';
+  receiptPage.innerHTML+=`<div>Telegram Username: ${tgUser}</div>`;
+  receiptPage.innerHTML+='<h3>Your Cart:</h3>';
+  cart.forEach(item=>{
+    receiptPage.innerHTML+=`<div>${item.title} (${item.duration}) x ${item.quantity} - $${item.price*item.quantity}</div>`;
+  });
+  receiptPage.innerHTML+='<p>NOTE: Please send BOTH screenshots of your crypto payment and your receipt to <a class="telegram-link" href="https://t.me/cocomelonqueen" target="_blank">@cocomelonqueen</a></p>';
+  const backBtn = document.createElement('button');
+  backBtn.textContent='Back to Store';
+  backBtn.style.marginTop='1rem';
+  backBtn.onclick=()=>{receiptPage.style.display='none'; productsGrid.parentElement.style.display='block'; cart=[]; updateCartCount();}
+  receiptPage.appendChild(backBtn);
+}
+
+</script>
+</body>
+</html>
